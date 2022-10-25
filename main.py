@@ -36,7 +36,6 @@ port = str(input("Input COM Port : "))
 
 serial = Serial(port, 57600, timeout=0.1)
 
-print("Input Position RFID : ")
 pos = int(input("Input Possition RFID :"))
 
 
@@ -62,7 +61,7 @@ def send_cmd(cmd):
     response = serial.read(512)
     response_hex = response.hex().upper()
     hex_list = [response_hex[i:i + 2] for i in range(0, len(response_hex), 2)]
-    print(hex_list)
+    # print(hex_list)
     hex_space = ' '.join(hex_list)
     uid = hex_space[-6:]
     uid_str = uid.replace(" ", "")
@@ -70,7 +69,7 @@ def send_cmd(cmd):
         "pos": pos,
         "kode": uid_str
     }
-    print(data_scan)
+    # print(data_scan)
     if(hex_space.find("FB") != -1):
         print("Kartu Tidak Terdeteksi")
     elif(hex_space.find("FE") != -1):
@@ -80,7 +79,7 @@ def send_cmd(cmd):
     else:
         print(f"UID Kartu : {uid_str}")
         sendApi = requests.get(url, params=data_scan, verify=False)
-        print(sendApi.text)
+        print(sendApi)
 
 def sendData():
     global thread
