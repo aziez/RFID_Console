@@ -2,8 +2,10 @@ import threading
 from tkinter import  *
 from tkinter import ttk
 import requests
+import serial
 from serial import *
 import urllib3
+from tkinter import  messagebox
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -16,6 +18,7 @@ start = True
 thread = None
 test_serial = None
 console = None
+epcValue = None
 
 # PRESET RFID
 PRESET_Value = 0xFFFF
@@ -55,6 +58,8 @@ lbSerial = Label
 enPort = ttk.Entry
 enPos = ttk.Entry
 
+portStatus = messagebox
+
 
 # COMMUNICATION FUNCTION
 def crc(cmd):
@@ -75,60 +80,85 @@ def crc(cmd):
 
 
 def setReader():
-    global test_serial
-    port = enPort.get()
-    pos = enPos.get()
+    global  test_serial
+    try:
+        port = enPort.get()
+        pos = enPos.get()
+        test_serial = Serial(port, 57600, timeout=0.1)
+        lbDataPort.configure(text=f"Port = {port}", background="green", foreground="white")
+        lbDataPos.configure(text=f"Reader POS = {pos}")
+        btnScan['state'] = 'normal'
+    except serial.SerialException as e:
+        portStatus.showerror("PORT TIDAK TERBUKA", e)
+        enPort.delete(1, "end")
+        enPort.focus()
+        btnScan['state'] = 'disabled'
+    except TypeError as e:
+        print(f"Port Closed{e}")
+        btnScan['state'] = 'disabled'
+    else:
+        return test_serial
 
-    lbDataPort.configure(text=f"Port = {port}")
-    lbDataPos.configure(text=f"Posisi Reader = {pos}")
-
-    test_serial = Serial(port, 57600, timeout=0.1)
-    lbSerial.configure(text=test_serial.open())
 
 def sendData():
     global thread
-    send_cmd(INVENTORY1)
-
+    send_cmd(INVENTORY2)
     thread = threading.Timer(1.0, sendData)
     thread.start()
 
 def send_cmd(cmd):
     global console
+    global epcValue
     data_scan = crc(cmd)
     test_serial.write(data_scan)
     response = test_serial.read(512)
     response_hex = response.hex().upper()
     hex_list = [response_hex[i:i + 2] for i in range(0, len(response_hex), 2)]
     # print(hex_list)
+    # UID : ['0B', '00', '0F', '01', '01', '04', '41', '5A', '49', '5A', 'AF', '10']
+    epcData = hex_list[6:10]
+    hex_epc = ' '.join(epcData)
+    epc_byte = bytes.fromhex(hex_epc)
+    epcValue = epc_byte.decode("ASCII")
     hex_space = ' '.join(hex_list)
     uid = hex_space[-6:]
     uid_str = uid.replace(" ", "")
+    # print(data_scan)
     data_scan = {
         "pos": pos,
         "kode": uid_str
     }
-    # print(data_scan)
     if (hex_space.find("FB") != -1):
+        textData.config(fg="black", font='Arial 15')
         textData.insert(0.0,"Kartu Tidak Terdeteksi \n")
     elif (hex_space.find("FE") != -1):
         textData.insert(0.0,"Kartu Tidak Terdeteksi \n")
     elif (hex_space == ""):
+        btnSet["state"] = 'normal'
+        textData.config(fg="black", font='Arial 15')
         textData.insert(0.0,"PORT COM TIDAK TERDETEKSI !!! \n")
+        enPort.delete(1, "end")
+        enPort.focus()
         btnScan.configure(text="START SCAN")
         thread.cancel()
     else:
-        # print(f"Terkirim UID : {uid_str}")
         sendApi = requests.get(url, params=data_scan, verify=False)
-        textData.insert(0.0, f"Terkirim UID : {uid_str} \n Data = {sendApi} \n")
+        textData.config(fg="blue", font='Helvetica 15 bold')
+        textData.delete(1.0, "end")
+        textData.insert(0.0, f"UID : {epcValue}\nStatus :  \n")
+
+
 def triggerScan():
     global start
 
     if start:
+        btnSet["state"] = 'disabled'
         btnScan.configure(text="STOP SCAN")
         textData.delete(0.0, 'end')
         sendData()
         start = False
     else:
+        btnSet["state"] = 'normal'
         btnScan.configure(text="START SCAN")
         textData.delete(0.0, 'end')
         thread.cancel()
@@ -141,57 +171,60 @@ main = Tk()
 # FRAME WINDOW
 frameConfig = ttk.LabelFrame(main)
 frameConfig.configure(height=200, width=200, text="Konfigurasi RFID")
-frameConfig.pack(side="bottom")
+frameConfig.pack(side="top")
 
 frameData = ttk.LabelFrame(main)
-frameData.configure(height=200, width=200, text="DATA Reader")
-frameData.pack(side="top")
+frameData.configure(width=200, height=200, text="DATA SCANNER")
+frameData.pack(side="bottom")
 
-frameReturn = ttk.Frame(main,)
-frameReturn.configure(height=200, width=300)
+framePort = ttk.Frame(frameData)
+framePort.configure(height=100, width=100, borderwidth=3)
+framePort.pack(side="left", anchor=SW)
+
+framePos = ttk.Frame(frameData)
+framePos.configure(height=100, width=100, borderwidth=3)
+framePos.pack(side="right", anchor=SE)
+
+frameReturn = ttk.Frame(main)
+frameReturn.configure(height=200, width=350)
 frameReturn.pack(side='top')
 
-textData = Text(frameReturn, width=50, height=25)
+textData = Text(frameReturn, width=50, height=25, font="Helvetica 15")
 textData.pack(side="left", anchor=W, pady=25, padx=25)
 
 btnScan = ttk.Button(frameReturn)
 btnScan.configure(text="START SCAN", padding=25, command=triggerScan)
+btnScan['state'] = 'disabled'
 btnScan.pack(side="right", anchor=E)
 
 
-
-
 # KOMPONENT FRAME KONFIG
-lbPort = ttk.Label(frameConfig, text="COM Port : ", font=("Helvetica", 10), background="green", foreground="white")
+lbPort = ttk.Label(frameConfig, text="COM Port : ", font='Helvetica 15 bold', background="green", foreground="white")
 lbPort.pack(side="left")
 
-enPort = ttk.Entry(frameConfig, width=10)
-enPort.insert("0", port)
+enPort = ttk.Entry(frameConfig, width=15, font="Arial 14 bold")
+enPort.insert("0", port.upper())
 enPort.pack(side="left", padx=10)
 
-lbPos = ttk.Label(frameConfig, text="Posisi Reader : ", font=("Arial", 10), background="green", foreground="white")
+lbPos = ttk.Label(frameConfig, text="Reader POS : ", font='Helvetica 15 bold', background="green", foreground="white")
 lbPos.pack(side="left")
 
-enPos = ttk.Entry(frameConfig)
-enPos.insert("0", port)
-enPos.pack(side="left", padx=10, pady=10)
+enPos = ttk.Entry(frameConfig, width=10, font="Arial 14 bold")
+enPos.insert("0", pos.upper())
+enPos.pack(side="left", padx=10)
 
 btnSet = ttk.Button(frameConfig)
-btnSet.configure(text="Set Reader", padding=5, command=setReader)
+btnSet.configure(text="Set Reader", padding=10, command=setReader)
 btnSet.pack(side="bottom", padx=10, pady=10)
 
 # KOMPONENT FRAME DATA RFID
-lbDataPort = ttk.Label(frameData, text=f"Serial = {port}", foreground="green", padding=10, font={"Helvetica", 15})
-lbDataPort.pack(side="top")
+lbDataPort = ttk.Label(framePort, text=f"Port = {port.upper()}", background="red", foreground="white", padding=10, font='Helvetica 15 bold')
+lbDataPort.pack(anchor=SW)
 
-lbDataPos = ttk.Label(frameData, text=f"Posisi Reader = {pos}", foreground="green", padding=10, font={"Helvetica", 15})
-lbDataPos.pack(side="top")
+lbDataPos = ttk.Label(framePos, text=f"Posisi = ", background="blue", foreground="white", padding=10, font='Helvetica 15 bold')
+lbDataPos.pack(anchor=SE)
 
-lbSerial = ttk.Label(frameData, text="Serial = ", foreground="green", padding=10, font={'Arial', 15})
-lbSerial.pack(side='top')
-
-
-main.geometry("600x400")
+main.geometry("800x400")
 
 
 main.mainloop()
