@@ -90,7 +90,7 @@ def setReader():
         btnScan['state'] = 'normal'
     except serial.SerialException as e:
         portStatus.showerror("PORT TIDAK TERBUKA", e)
-        enPort.delete(1, "end")
+        enPort.delete(3, "end")
         enPort.focus()
         btnScan['state'] = 'disabled'
     except TypeError as e:
@@ -102,42 +102,36 @@ def setReader():
 
 def sendData():
     global thread
-    send_cmd(INVENTORY2)
-    thread = threading.Timer(1.0, sendData)
+    send_cmd(INVENTORY1)
+    thread = threading.Timer(0, sendData)
     thread.start()
 
 def send_cmd(cmd):
     global console
-    global epcValue
     data_scan = crc(cmd)
     test_serial.write(data_scan)
     response = test_serial.read(512)
     response_hex = response.hex().upper()
     hex_list = [response_hex[i:i + 2] for i in range(0, len(response_hex), 2)]
-    # print(hex_list)
-    # UID : ['0B', '00', '0F', '01', '01', '04', '41', '5A', '49', '5A', 'AF', '10']
-    epcData = hex_list[6:10]
-    hex_epc = ' '.join(epcData)
-    epc_byte = bytes.fromhex(hex_epc)
-    epcValue = epc_byte.decode("ASCII")
     hex_space = ' '.join(hex_list)
     uid = hex_space[-6:]
     uid_str = uid.replace(" ", "")
-    # print(data_scan)
     data_scan = {
         "pos": pos,
         "kode": uid_str
     }
     if (hex_space.find("FB") != -1):
         textData.config(fg="black", font='Arial 15')
+        textData.delete(1.0, "end")
         textData.insert(0.0,"Kartu Tidak Terdeteksi \n")
     elif (hex_space.find("FE") != -1):
+        textData.delete(1.0, "end")
         textData.insert(0.0,"Kartu Tidak Terdeteksi \n")
     elif (hex_space == ""):
         btnSet["state"] = 'normal'
         textData.config(fg="black", font='Arial 15')
         textData.insert(0.0,"PORT COM TIDAK TERDETEKSI !!! \n")
-        enPort.delete(1, "end")
+        enPort.delete(3, "end")
         enPort.focus()
         btnScan.configure(text="START SCAN")
         thread.cancel()
@@ -145,7 +139,7 @@ def send_cmd(cmd):
         sendApi = requests.get(url, params=data_scan, verify=False)
         textData.config(fg="blue", font='Helvetica 15 bold')
         textData.delete(1.0, "end")
-        textData.insert(0.0, f"UID : {epcValue}\nStatus :  \n")
+        textData.insert(0.0, f"UID : {uid_str}\n Status :{sendApi}  \n")
 
 
 def triggerScan():
@@ -225,6 +219,5 @@ lbDataPos = ttk.Label(framePos, text=f"Posisi = ", background="blue", foreground
 lbDataPos.pack(anchor=SE)
 
 main.geometry("800x400")
-
 
 main.mainloop()

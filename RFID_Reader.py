@@ -94,7 +94,7 @@ def sendData():
     global thread
     send_cmd(INVENTORY1)
 
-    thread = threading.Timer(2.0, sendData)
+    thread = threading.Timer(0, sendData)
     thread.start()
 
 def send_cmd(cmd):
@@ -111,9 +111,11 @@ def send_cmd(cmd):
     # print(data_scan)
     if (hex_space.find("FB") != -1):
         textData.config(fg="black", font='Arial 15')
-        textData.insert(0.0,"Kartu Tidak Terdeteksi \n")
+        # textData.insert(0.0,"Kartu Tidak Terdeteksi \n")
+        textData.delete(1.0, "end")
     elif (hex_space.find("FE") != -1):
-        textData.insert(0.0,"Kartu Tidak Terdeteksi \n")
+        # textData.insert(0.0,"Kartu Tidak Terdeteksi \n")
+        textData.delete(1.0, "end")
     elif (hex_space == ""):
         btnSet["state"] = 'normal'
         textData.config(fg="black", font='Arial 15')
