@@ -19,6 +19,8 @@ thread = None
 test_serial = None
 console = None
 epcValue = None
+uidLatest = None
+
 
 # PRESET RFID
 PRESET_Value = 0xFFFF
@@ -54,6 +56,7 @@ lbDataPort = ttk.Label
 lbDataPos = ttk.Label
 lbDataUid = Label
 lbSerial = Label
+lbUidLatest = Label
 
 enPort = ttk.Entry
 enPos = ttk.Entry
@@ -115,6 +118,7 @@ def send_cmd(cmd):
     hex_list = [response_hex[i:i + 2] for i in range(0, len(response_hex), 2)]
     hex_space = ' '.join(hex_list)
     uid = hex_space[-6:]
+    uidLatest = uid
     uid_str = uid.replace(" ", "")
     data_scan = {
         "pos": pos,
@@ -137,6 +141,7 @@ def send_cmd(cmd):
         thread.cancel()
     else:
         sendApi = requests.get(url, params=data_scan, verify=False)
+        lbUidLatest.configure(text=f"Latest UID = {uidLatest}")
         textData.config(fg="blue", font='Helvetica 15 bold')
         textData.delete(1.0, "end")
         textData.insert(0.0, f"UID : {uid_str}\n Status :{sendApi}  \n")
@@ -166,6 +171,10 @@ main = Tk()
 frameConfig = ttk.LabelFrame(main)
 frameConfig.configure(height=200, width=200, text="Konfigurasi RFID")
 frameConfig.pack(side="top")
+
+frameLatest = ttk.Frame(main)
+frameLatest.configure(height=25, width = 50)
+frameLatest.pack(side="top")
 
 frameData = ttk.LabelFrame(main)
 frameData.configure(width=200, height=200, text="DATA SCANNER")
@@ -218,6 +227,8 @@ lbDataPort.pack(anchor=SW)
 lbDataPos = ttk.Label(framePos, text=f"Posisi = ", background="blue", foreground="white", padding=10, font='Helvetica 15 bold')
 lbDataPos.pack(anchor=SE)
 
+lbUidLatest = ttk.Label(frameLatest, text="Latest UID = ", background="blue", foreground="white", padding=10, font='Helvetica 15 bold')
+lbUidLatest.pack(side="left", padx=10, pady=10)
 main.geometry("800x400")
 
 main.mainloop()
