@@ -20,6 +20,7 @@ test_serial = None
 console = None
 epcValue = None
 uidLatest = None
+sendApi = None
 
 
 # PRESET RFID
@@ -111,6 +112,7 @@ def sendData():
 
 def send_cmd(cmd):
     global console
+    global sendApi
     data_scan = crc(cmd)
     test_serial.write(data_scan)
     response = test_serial.read(512)
@@ -118,8 +120,8 @@ def send_cmd(cmd):
     hex_list = [response_hex[i:i + 2] for i in range(0, len(response_hex), 2)]
     hex_space = ' '.join(hex_list)
     uid = hex_space[-6:]
-    uidLatest = uid
     uid_str = uid.replace(" ", "")
+    uidLatest = uid_str
     data_scan = {
         "pos": pos,
         "kode": uid_str
@@ -140,11 +142,15 @@ def send_cmd(cmd):
         btnScan.configure(text="START SCAN")
         thread.cancel()
     else:
-        sendApi = requests.get(url, params=data_scan, verify=False)
-        lbUidLatest.configure(text=f"Latest UID = {uidLatest}")
-        textData.config(fg="blue", font='Helvetica 15 bold')
-        textData.delete(1.0, "end")
-        textData.insert(0.0, f"UID : {uid_str}\n Status :{sendApi}  \n")
+        if (uidLatest == uid_str):
+            lbUidLatest.configure(text=f"Latest UID = {uidLatest}")
+            textData.insert(0.0, f"PASSS")
+        else:
+            sendApi = requests.get(url, params=data_scan, verify=False)
+            lbUidLatest.configure(text=f"Latest UID = {uidLatest}")
+            textData.config(fg="blue", font='Helvetica 15 bold')
+            textData.delete(1.0, "end")
+            textData.insert(0.0, f"UID : {uid_str}\n Status :{sendApi}  \n")
 
 
 def triggerScan():
