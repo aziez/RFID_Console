@@ -85,7 +85,7 @@ def crc(cmd):
 
 
 def setReader():
-    global  test_serial
+    global  test_serial, pos
     try:
         port = enPort.get()
         pos = enPos.get()
@@ -105,7 +105,7 @@ def setReader():
         return test_serial
 
 def send_cmd(cmd):
-    global console, twin, data, uid_str, uidLatest, data_kartu
+    global console, twin, data, uid_str, uidLatest, data_kartu, pos
     data_scan = crc(cmd)
     test_serial.write(data_scan)
     response = test_serial.read(512)
@@ -116,8 +116,8 @@ def send_cmd(cmd):
     uid_str = uid.replace(" ", "")
     uidLatest = uid_str
     data_scan = {
-        "kode": uid_str,
-        "pos": pos
+        'kode': uid_str,
+        'pos': pos
     }
     if (hex_space.find("FB") != -1):
         textData.config(fg="black", font='Arial 15')
@@ -143,15 +143,15 @@ def send_cmd(cmd):
             # print(data_kartu)
         else:
             data_kartu.append(uidLatest)
-            sendApi = requests.get(url, params=data_scan, verify=False)
+            sendApi = requests.get(url, params={'pos': pos, 'kode': uid_str,}, verify=False)
             lbUidLatest.configure(text=f"Latest UID = {uidLatest}")
             textData.config(fg="blue", font='Helvetica 15 bold')
             textData.delete(1.0, "end")
-            textData.insert(0.0, f"UID : {uid_str} \n Status :{sendApi.text} \n")
-
-            # print(data_kartu)
-
-
+            textData.insert(0.0, f"UID : {uid_str} \n Status :{sendApi} \n")
+            #
+            # print(pos)
+            # print(uid_str)
+            # print(sendApi.text)
 
 
 def sendData():
@@ -201,6 +201,7 @@ framePort.pack(side="left", anchor=SW)
 framePos = ttk.Frame(frameData)
 framePos.configure(height=100, width=100, borderwidth=3)
 framePos.pack(side="right", anchor=SE)
+
 
 frameReturn = ttk.Frame(main)
 frameReturn.configure(height=200, width=350)
