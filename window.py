@@ -21,6 +21,7 @@ console = None
 epcValue = None
 uidLatest = None
 sendApi = None
+twin = False
 
 
 # PRESET RFID
@@ -42,8 +43,8 @@ writeEpc = '0F 03 04 03 00 00 00 00 11 22 33 44 55 66'
 setAddress = '05 03 24 00'
 
 # API SENDER VARIABLE
-url = 'https://fekdi.co.id/rfid'
-data = {}
+url = 'https://registrasi.ptbi.co.id/web/rfid'
+data_kartu = []
 
 # VARIABLE GUI
 btnScan = ttk.Button
@@ -103,16 +104,8 @@ def setReader():
     else:
         return test_serial
 
-
-def sendData():
-    global thread
-    send_cmd(INVENTORY1)
-    thread = threading.Timer(0, sendData)
-    thread.start()
-
 def send_cmd(cmd):
-    global console
-    global sendApi
+    global console, twin, data, uid_str, uidLatest, data_kartu
     data_scan = crc(cmd)
     test_serial.write(data_scan)
     response = test_serial.read(512)
@@ -123,16 +116,16 @@ def send_cmd(cmd):
     uid_str = uid.replace(" ", "")
     uidLatest = uid_str
     data_scan = {
-        "pos": pos,
-        "kode": uid_str
+        "kode": uid_str,
+        "pos": pos
     }
     if (hex_space.find("FB") != -1):
         textData.config(fg="black", font='Arial 15')
         textData.delete(1.0, "end")
-        textData.insert(0.0,"Kartu Tidak Terdeteksi \n")
+        textData.insert(0.0,f"Kartu Tidak Terdeteksi \n")
     elif (hex_space.find("FE") != -1):
         textData.delete(1.0, "end")
-        textData.insert(0.0,"Kartu Tidak Terdeteksi \n")
+        textData.insert(0.0,f"Kartu Tidak Terdeteksi\n")
     elif (hex_space == ""):
         btnSet["state"] = 'normal'
         textData.config(fg="black", font='Arial 15')
@@ -142,15 +135,30 @@ def send_cmd(cmd):
         btnScan.configure(text="START SCAN")
         thread.cancel()
     else:
-        if (uidLatest == uid_str):
-            lbUidLatest.configure(text=f"Latest UID = {uidLatest}")
-            textData.insert(0.0, f"PASSS")
+        if uid_str in data_kartu:
+            textData.config(fg="black", font='Arial 15')
+            textData.delete(1.0, "end")
+            textData.insert(0.0, f"PASS DOUBLE \n")
+
+            # print(data_kartu)
         else:
+            data_kartu.append(uidLatest)
             sendApi = requests.get(url, params=data_scan, verify=False)
             lbUidLatest.configure(text=f"Latest UID = {uidLatest}")
             textData.config(fg="blue", font='Helvetica 15 bold')
             textData.delete(1.0, "end")
-            textData.insert(0.0, f"UID : {uid_str}\n Status :{sendApi}  \n")
+            textData.insert(0.0, f"UID : {uid_str} \n Status :{sendApi.text} \n")
+
+            # print(data_kartu)
+
+
+
+
+def sendData():
+    global thread
+    send_cmd(INVENTORY1)
+    thread = threading.Timer(0, sendData)
+    thread.start()
 
 
 def triggerScan():
