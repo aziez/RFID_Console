@@ -134,7 +134,7 @@ def send_cmd(cmd):
         btnScan.configure(text="START SCAN")
         thread.cancel()
     else:
-        if uid_str in uidLatest:
+        if uid_str == uidLatest:
             textData.config(fg="black", font='Arial 15')
             textData.delete(1.0, "end")
             textData.insert(0.0, f"PASS DOUBLE \n")
@@ -178,6 +178,7 @@ def triggerScan():
 
 # TKINKER GUI
 main = Tk()
+main.title("RFID APPS by: Aziz")
 
 # FRAME WINDOW
 frameConfig = ttk.LabelFrame(main)
